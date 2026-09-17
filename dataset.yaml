@@ -1,0 +1,15 @@
+# YOLOv9 Dataset Configuration — Hand Gesture Detection
+# Classes: openPalm, thumbsUp
+
+# Dataset paths (absolute)
+path: C:/Users/User/Downloads/ThumbsUp_OpenPalm/dataset
+train: images/train
+val: images/val
+
+# Number of classes
+nc: 2
+
+# Class names
+names:
+  0: openPalm
+  1: thumbsUp

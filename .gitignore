@@ -1,0 +1,47 @@
+# ==========================================
+# Datasets & Raw Images
+# ==========================================
+# Generated YOLO dataset splits (images & labels)
+dataset/
+
+# Raw image source folders
+openPalm/
+thumbsUp/
+
+# YOLO label cache files
+*.cache
+
+# ==========================================
+# Training Outputs & Model Weights
+# ==========================================
+# Ultralytics training runs, logs, and artifacts
+runs/
+
+# Pre-trained models and exported weights
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+
+# ==========================================
+# Python & Virtual Environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+venv/
+.venv/
+env/
+ENV/
+
+# ==========================================
+# System & Editor Files
+# ==========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/settings.json
