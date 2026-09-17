@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GestureVision AI — YOLOv9 Hand Gesture GUI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Bar -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
+                        <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
+                        <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
+                        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
+                    </svg>
+                </div>
+                <div class="brand-info">
+                    <h1>GestureVision <span class="badge-ai">AI</span></h1>
+                    <span class="subtext">YOLOv9 Hand Gesture Recognition</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="status-pill live-pill">
+                    <span class="pulse-dot"></span>
+                    <span>LIVE INFERENCE</span>
+                </div>
+                <div class="status-pill model-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Weights: <strong>{{ model_name }}</strong></span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <button id="mirrorToggleBtn" class="btn-icon" title="Toggle Mirror Flip (M)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m14 18 4-4-4-4"/><path d="M20 14H10"/><path d="M4 14a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1"/></svg>
+                    <span>Mirror</span>
+                </button>
+                <button id="snapshotHeaderBtn" class="btn-primary" title="Capture Screenshot (Space)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <span>Snapshot</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content -->
+        <main class="dashboard-grid">
+            <!-- Left: Video Viewport -->
+            <section class="viewport-section">
+                <div class="video-card">
+                    <div class="video-container" id="videoContainer">
+                        <img id="videoStream" src="/video_feed" alt="Live YOLOv9 Stream" class="video-feed" />
+
+                        <!-- On-Screen HUD Overlay -->
+                        <div class="hud-overlay top-left">
+                            <div class="hud-badge camera-badge">
+                                <span class="hud-dot"></span>
+                                <span id="hudCameraLabel">Camera {{ current_camera }}</span>
+                            </div>
+                            <div class="hud-badge fps-badge">
+                                <span id="hudFps">0.0</span> FPS
+                            </div>
+                        </div>
+
+                        <div class="hud-overlay top-right">
+                            <div class="hud-badge latency-badge">
+                                <span id="hudLatency">0.0</span> ms
+                            </div>
+                        </div>
+
+                        <!-- Floating Quick Controls -->
+                        <div class="video-floating-actions">
+                            <button id="floatingSnapshotBtn" class="btn-float" title="Capture Snapshot">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            </button>
+                            <button id="fullscreenBtn" class="btn-float" title="Full Screen">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stream Footer Bar -->
+                    <div class="video-footer">
+                        <div class="shortcuts-hint">
+                            <span class="key">Space</span> Snapshot &nbsp;|&nbsp; 
+                            <span class="key">M</span> Mirror &nbsp;|&nbsp; 
+                            <span class="key">C</span> Next Camera
+                        </div>
+                        <div class="resolution-tag" id="resolutionTag">1280 x 720 HD</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right: Interactive Control & Analytics Sidebar -->
+            <aside class="sidebar-section">
+                <!-- 1. Camera Selector Card -->
+                <div class="glass-card camera-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <span>Camera Device</span>
+                        </div>
+                        <button id="refreshCamerasBtn" class="btn-text-icon" title="Rescan for connected cameras">
+                            <svg id="refreshIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                            <span>Rescan</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="select-wrapper">
+                            <select id="cameraSelect" class="styled-select">
+                                {% for cam in cameras %}
+                                <option value="{{ cam }}" {% if cam == current_camera %}selected{% endif %}>
+                                    Camera Index {{ cam }} {% if cam == 0 %}(Default){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <span class="select-arrow">▼</span>
+                        </div>
+                        <p class="field-hint">Select a camera index to instantly switch video capture.</p>
+                    </div>
+                </div>
+
+                <!-- 2. Detection Confidence Card -->
+                <div class="glass-card confidence-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+                            <span>Confidence Threshold</span>
+                        </div>
+                        <span class="value-badge" id="confidenceValue">{{ confidence }}%</span>
+                    </div>
+                    <div class="card-body">
+                        <input type="range" id="confidenceSlider" min="10" max="95" value="{{ confidence }}" step="5" class="styled-slider" />
+                        <div class="slider-presets">
+                            <button class="preset-btn" data-val="30">30% (Low)</button>
+                            <button class="preset-btn" data-val="50">50% (Default)</button>
+                            <button class="preset-btn" data-val="75">75% (Strict)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Live Gesture Recognition Status -->
+                <div class="glass-card gestures-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
+                            <span>Active Gestures</span>
+                        </div>
+                        <span class="live-counter" id="activeCountBadge">0 Detected</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="gesture-tiles-grid">
+                            <!-- Open Palm Card -->
+                            <div class="gesture-tile" id="tileOpenPalm">
+                                <div class="tile-icon icon-palm">✋</div>
+                                <div class="tile-details">
+                                    <div class="tile-name">Open Palm</div>
+                                    <div class="tile-status" id="statusOpenPalm">Not Detected</div>
+                                </div>
+                                <div class="tile-meter">
+                                    <div class="tile-bar bar-palm" id="meterOpenPalm" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Thumbs Up Card -->
+                            <div class="gesture-tile" id="tileThumbsUp">
+                                <div class="tile-icon icon-thumb">👍</div>
+                                <div class="tile-details">
+                                    <div class="tile-name">Thumbs Up</div>
+                                    <div class="tile-status" id="statusThumbsUp">Not Detected</div>
+                                </div>
+                                <div class="tile-meter">
+                                    <div class="tile-bar bar-thumb" id="meterThumbsUp" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Recent Snapshots Gallery -->
+                <div class="glass-card snapshots-card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            <span>Recent Snapshots</span>
+                        </div>
+                        <span class="snapshots-count" id="snapshotsCount">0 saved</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="snapshots-carousel" id="snapshotsCarousel">
+                            <div class="empty-snapshots" id="emptySnapshotsMsg">
+                                <span>No snapshots taken yet. Click "Snapshot" or press Space.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Snapshot Image Lightbox / Modal -->
+    <div id="imageModal" class="modal-backdrop">
+        <div class="modal-content">
+            <button id="closeModalBtn" class="modal-close">&times;</button>
+            <img id="modalImage" src="" alt="Snapshot Preview" />
+            <div class="modal-footer">
+                <span id="modalTimestamp"></span>
+                <a id="modalDownloadBtn" href="#" download class="btn-secondary">Download Photo</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
