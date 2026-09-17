@@ -19,6 +19,7 @@ from pathlib import Path
 import cv2
 from flask import Flask, render_template, Response, jsonify, request, send_from_directory
 from ultralytics import YOLO
+from hand_detector import HandGestureDetector
 
 # Fix Windows console encoding
 if sys.platform == "win32":
@@ -79,6 +80,7 @@ class CameraManager:
         self.inference_time_ms = 0.0
         self.current_detections = {}
         self.latest_frame = None
+        self.detector = HandGestureDetector(model)
         self.available_cameras = []
         self.scan_cameras()
         self.init_camera(self.current_camera_idx)
@@ -139,40 +141,38 @@ class CameraManager:
             # Store clean frame copy for high-res screenshots
             self.latest_frame = frame.copy()
 
-            # YOLO inference
+            # Hand-focused detection and classification
             start_infer = time.time()
-            results = model(frame, conf=self.confidence_threshold, verbose=False)
+            detections = self.detector.detect(frame, conf_threshold=self.confidence_threshold)
             self.inference_time_ms = (time.time() - start_infer) * 1000.0
 
             detections_map = {}
-            for result in results:
-                boxes = result.boxes
-                if boxes is not None:
-                    for box in boxes:
-                        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                        conf = float(box.conf[0])
-                        cls_id = int(box.cls[0])
-                        raw_name = model.names.get(cls_id, f"class_{cls_id}")
-                        disp_name = CLASS_DISPLAY.get(cls_id, raw_name)
-                        color = CLASS_COLORS.get(cls_id, (0, 255, 255))
+            for det in detections:
+                x1, y1, x2, y2 = det["bbox"]
+                conf = det["confidence"]
+                cls_id = det["cls_id"]
+                raw_name = det["class_name"]
+                disp_name = CLASS_DISPLAY.get(cls_id, raw_name)
+                color = CLASS_COLORS.get(cls_id, (0, 255, 255))
 
-                        # Bounding Box
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+                # Draw bounding box strictly on the hand
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
 
-                        # Label badge
-                        label_text = f"{disp_name}  {conf:.0%}"
-                        (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 2)
-                        badge_y1 = max(0, y1 - th - 12)
-                        badge_y2 = max(th + 12, y1)
-                        cv2.rectangle(frame, (x1, badge_y1), (x1 + tw + 14, badge_y2), color, -1)
-                        cv2.putText(frame, label_text, (x1 + 7, badge_y2 - 6),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
+                # Label badge
+                label_text = f"{disp_name}  {conf:.0%}"
+                (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 2)
+                badge_y1 = max(0, y1 - th - 12)
+                badge_y2 = max(th + 12, y1)
+                cv2.rectangle(frame, (x1, badge_y1), (x1 + tw + 14, badge_y2), color, -1)
+                cv2.putText(frame, label_text, (x1 + 7, badge_y2 - 6),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
 
-                        if disp_name not in detections_map:
-                            detections_map[disp_name] = {"count": 0, "max_conf": conf}
-                        detections_map[disp_name]["count"] += 1
-                        detections_map[disp_name]["max_conf"] = max(detections_map[disp_name]["max_conf"], conf)
+                if disp_name not in detections_map:
+                    detections_map[disp_name] = {"count": 0, "max_conf": conf}
+                detections_map[disp_name]["count"] += 1
+                detections_map[disp_name]["max_conf"] = max(detections_map[disp_name]["max_conf"], conf)
 
+            # When no hands are detected, detections_map is strictly empty
             self.current_detections = detections_map
 
             # Encode frame to JPEG

@@ -22,6 +22,7 @@ import argparse
 from pathlib import Path
 import cv2
 from ultralytics import YOLO
+from hand_detector import HandGestureDetector
 
 # Fix Windows console encoding
 if sys.platform == "win32":
@@ -212,6 +213,7 @@ def main():
 
     print(f"[✓] Loading model from: {model_path}")
     model = YOLO(str(model_path))
+    detector = HandGestureDetector(model)
     print(f"[✓] Model loaded! Classes: {model.names}")
 
     # 2. Camera Discovery & Selection
@@ -249,33 +251,30 @@ def main():
                 time.sleep(0.1)
                 continue
 
-            # Run inference
-            results = model(frame, conf=conf_thresh, verbose=False)
+            # Run hand-focused detection
+            detections = detector.detect(frame, conf_threshold=conf_thresh)
 
             detected_counts = {}
 
-            # Process detections
-            for result in results:
-                boxes = result.boxes
-                if boxes is not None:
-                    for box in boxes:
-                        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                        conf = float(box.conf[0])
-                        cls_id = int(box.cls[0])
-                        raw_name = model.names.get(cls_id, f"cls_{cls_id}")
-                        display_name = CLASS_DISPLAY.get(cls_id, raw_name.upper())
+            # Process detections (strictly returns 0 when no hands detected)
+            for det in detections:
+                x1, y1, x2, y2 = det["bbox"]
+                conf = det["confidence"]
+                cls_id = det["cls_id"]
+                raw_name = det["class_name"]
+                display_name = CLASS_DISPLAY.get(cls_id, raw_name.upper())
 
-                        # Color
-                        color = CLASS_COLORS.get(cls_id, (0, 255, 255))
+                # Color
+                color = CLASS_COLORS.get(cls_id, (0, 255, 255))
 
-                        # Bounding Box
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+                # Bounding Box strictly around hand
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
 
-                        # Label badge
-                        label_text = f"{display_name} {conf:.0%}"
-                        draw_label(frame, label_text, x1, y1, color)
+                # Label badge
+                label_text = f"{display_name} {conf:.0%}"
+                draw_label(frame, label_text, x1, y1, color)
 
-                        detected_counts[display_name] = detected_counts.get(display_name, 0) + 1
+                detected_counts[display_name] = detected_counts.get(display_name, 0) + 1
 
             # FPS Calculation
             frame_count += 1
