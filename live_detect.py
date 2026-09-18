@@ -18,11 +18,11 @@ import sys
 import time
 from pathlib import Path
 from ultralytics import YOLO
-from hand_detector import HandGestureDetector
+
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
-MODEL_PATH = BASE_DIR / "best.pt" if (BASE_DIR / "best.pt").exists() else (BASE_DIR / "runs" / "detect" / "hand_gesture" / "weights" / "best.pt")
+MODEL_PATH = BASE_DIR / "runs" / "detect" / "hand_gesture_to50" / "weights" / "best.pt"
 CONFIDENCE_THRESHOLD = 0.5
 CAMERA_INDEX = 0        # Default webcam (change to 1, 2, etc. for other cameras)
 WINDOW_NAME = "YOLOv9 Hand Gesture Detection"
@@ -75,8 +75,7 @@ def main():
     # ─── Load model ──────────────────────────────────────────────────────
     print(f"Loading YOLOv9 model from: {MODEL_PATH}")
     model = YOLO(str(MODEL_PATH))
-    detector = HandGestureDetector(model)
-    print("[✓] Model and hand detector loaded successfully")
+    print("[✓] Model loaded successfully")
 
     # ─── Open webcam ─────────────────────────────────────────────────────
     print(f"Opening webcam (index={CAMERA_INDEX})...")
@@ -92,8 +91,8 @@ def main():
 
     print("[✓] Webcam opened successfully")
     print("=" * 50)
-    print("  Live Hand Gesture Detection Running!")
-    print("  Detection focused strictly on hand regions")
+    print("  Live Detection Running!")
+    print("  Show 'Thumbs Up' or 'Open Palm' to the camera")
     print("  Press 'q' to quit | Press 's' to screenshot")
     print("=" * 50)
 
@@ -109,27 +108,34 @@ def main():
                 print("[!] Failed to read frame from webcam")
                 break
 
-            # ─── Run hand-focused detection ───────────────────────────
-            # Strictly returns 0 when no hands are detected
-            detections = detector.detect(frame, conf_threshold=CONFIDENCE_THRESHOLD)
-            detections_count = len(detections)
+            # ─── Run inference ────────────────────────────────────────
+            results = model(frame, conf=CONFIDENCE_THRESHOLD, verbose=False)
 
             # ─── Draw detections ──────────────────────────────────────
-            for det in detections:
-                x1, y1, x2, y2 = det["bbox"]
-                conf = det["confidence"]
-                cls_id = det["cls_id"]
-                cls_name = det["class_name"]
+            detections_count = 0
 
-                color = CLASS_COLORS.get(cls_id, (255, 255, 255))
-                emoji = CLASS_EMOJIS.get(cls_id, cls_name)
+            for result in results:
+                boxes = result.boxes
+                if boxes is not None:
+                    for box in boxes:
+                        # Get box coordinates
+                        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                        conf = float(box.conf[0])
+                        cls_id = int(box.cls[0])
 
-                # Draw bounding box strictly around the hand
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+                        # Get class info
+                        cls_name = model.names[cls_id]
+                        color = CLASS_COLORS.get(cls_id, (255, 255, 255))
+                        emoji = CLASS_EMOJIS.get(cls_id, cls_name)
 
-                # Draw label
-                label = f"{emoji} {conf:.0%}"
-                draw_fancy_label(frame, label, x1, y1, color)
+                        # Draw bounding box
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+
+                        # Draw label
+                        label = f"{emoji} {conf:.0%}"
+                        draw_fancy_label(frame, label, x1, y1, color)
+
+                        detections_count += 1
 
             # ─── Calculate FPS ────────────────────────────────────────
             frame_count += 1
